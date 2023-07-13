@@ -848,12 +848,25 @@ func (f *fileWriter) WriteEnvironments(environmentsConfig *ir.EnvironmentsConfig
 // WriteError writes the structured error types.
 func (f *fileWriter) WriteError(errorDeclaration *ir.ErrorDeclaration) error {
 	// Generate the error type declaration.
-	typeName := errorDeclaration.Name.Name.PascalCase.UnsafeName
+	var (
+		typeName = errorDeclaration.Name.Name.PascalCase.UnsafeName
+		receiver = typeNameToReceiver(typeName)
+	)
 	f.WriteDocs(errorDeclaration.Docs)
 	f.P("type ", typeName, " struct {")
 	f.P("*core.APIError")
 	if errorDeclaration.Type == nil {
 		// This error doesn't have a body, so we only need to include the status code.
+		// We still needto implement the json.Unmarshaler and json.Marshaler though.
+		f.P("}")
+		f.P()
+		f.P("func (", receiver, "*", typeName, ") UnmarshalJSON(data []byte) error {")
+		f.P(receiver, ".StatusCode = ", errorDeclaration.StatusCode)
+		f.P("return nil")
+		f.P("}")
+		f.P()
+		f.P("func (", receiver, "*", typeName, ") MarshalJSON() ([]byte, error) {")
+		f.P("return nil, nil")
 		f.P("}")
 		f.P()
 		return nil
@@ -861,7 +874,6 @@ func (f *fileWriter) WriteError(errorDeclaration *ir.ErrorDeclaration) error {
 	var (
 		importPath = fernFilepathToImportPath(f.baseImportPath, errorDeclaration.Name.FernFilepath)
 		value      = typeReferenceToGoType(errorDeclaration.Type, f.types, f.imports, f.baseImportPath, importPath)
-		receiver   = typeNameToReceiver(typeName)
 	)
 	var literal string
 	if errorDeclaration.Type.Container != nil && errorDeclaration.Type.Container.Literal != nil {

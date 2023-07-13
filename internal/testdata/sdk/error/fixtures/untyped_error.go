@@ -9,3 +9,12 @@ import (
 type UntypedError struct {
 	*core.APIError
 }
+
+func (u *UntypedError) UnmarshalJSON(data []byte) error {
+	u.StatusCode = 400
+	return nil
+}
+
+func (u *UntypedError) MarshalJSON() ([]byte, error) {
+	return nil, nil
+}
